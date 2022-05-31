@@ -8,6 +8,9 @@ import 'package:tesla_animation/screens/components/bottom_navigation.dart';
 import 'package:tesla_animation/screens/components/door_lock.dart';
 import 'package:tesla_animation/screens/home_controller.dart';
 
+import 'components/temp_Details.dart';
+import 'components/temp_button.dart';
+
 class HomeScreen extends StatefulWidget {
   HomeScreen({Key? key}) : super(key: key);
 
@@ -15,13 +18,17 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final HomeController _controller = HomeController();
 
   late AnimationController _batteryAnimationController;
   late Animation<double> _animationbattery;
   late Animation<double> _animationbatterystatus;
+
+  late AnimationController _tempAnimationController;
+  late Animation<double> _animationCarShift;
+  late Animation<double> _animationTempShowInfo;
+  late Animation<double> _animationCoolGlow;
 
   void setupBatteryAnimation() {
     _batteryAnimationController = AnimationController(
@@ -39,22 +46,47 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void setupTempAnimation() {
+    _tempAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1500),
+    );
+    _animationCarShift = CurvedAnimation(
+      parent: _tempAnimationController,
+      curve: Interval(0.2, 0.4),
+    );
+    _animationTempShowInfo = CurvedAnimation(
+      parent: _tempAnimationController,
+      curve: Interval(0.45, 0.65),
+    );
+    _animationCoolGlow = CurvedAnimation(
+      parent: _tempAnimationController,
+      curve: Interval(0.7, 1),
+    );
+  }
+
   @override
   void initState() {
     setupBatteryAnimation();
+    setupTempAnimation();
     super.initState();
   }
 
   @override
   void dispose() {
     _batteryAnimationController.dispose();
+    _tempAnimationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-        animation: Listenable.merge([_controller, _batteryAnimationController]),
+        animation: Listenable.merge([
+          _controller,
+          _batteryAnimationController,
+          _tempAnimationController
+        ]),
         builder: (context, _) {
           return Scaffold(
             //here we have added the navigation bar
@@ -64,6 +96,10 @@ class _HomeScreenState extends State<HomeScreen>
                   _batteryAnimationController.forward();
                 else if (_controller.selectedBottomTab == 1 && index != 1)
                   _batteryAnimationController.reverse(from: 0.7);
+                if (index == 2)
+                  _tempAnimationController.forward();
+                else if (_controller.selectedBottomTab == 2 && index != 2)
+                  _tempAnimationController.reverse(from: 0.4);
                 _controller.onBottonNavigationTabChange(index);
               },
               selectedTab: _controller.selectedBottomTab,
@@ -76,12 +112,23 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical: constrains.maxHeight * 0.1),
-                        child: SvgPicture.asset(
-                          "assets/icons/Car.svg",
-                          width: double.infinity,
+                      SizedBox(
+                        height: constrains.maxHeight,
+                        width: constrains.maxWidth,
+                      ),
+                      Positioned(
+                        left:
+                            constrains.maxWidth / 2 * _animationCarShift.value,
+                        height: constrains.maxHeight,
+                        width: constrains.maxWidth,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              vertical: constrains.maxHeight * 0.1),
+                          child: SvgPicture.asset(
+
+                            "assets/icons/Car.svg",
+                            width: double.infinity,
+                          ),
                         ),
                       ),
                       AnimatedPositioned(
@@ -154,6 +201,23 @@ class _HomeScreenState extends State<HomeScreen>
                           constraints: constrains,
                         ),
                       ),
+                      Opacity(
+                          opacity: _animationTempShowInfo.value,
+                          child: tempDetails(controller: _controller)),
+                      Positioned(
+                        right: -180 * (1 - _animationCoolGlow.value),
+                        child: _controller.isCoolSelected
+                            ? Image.asset(
+                                "assets/images/Cool_glow_2.png",
+                                key: UniqueKey(),
+                                width: 200,
+                              )
+                            : Image.asset(
+                                "assets/images/Hot_glow_4.png",
+                                key: UniqueKey(),
+                                width: 200,
+                              ),
+                      )
                     ],
                   ),
                 );
